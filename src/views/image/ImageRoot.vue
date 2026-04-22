@@ -22,11 +22,8 @@
       </div>
       <div v-show="!sidebarCollapsed" class="sidebar-content">
         <FileTree
-          :openedFolders="imageStore.imageFolders"
           :currentPath="imageStore.currentPath"
           @select="onFolderSelect"
-          @close="onFolderClose"
-          @addFolder="addFolder"
           @expandChange="onExpandChange"
         />
       </div>
@@ -111,12 +108,9 @@ const handleDrop = async (e) => {
     }
   }
 
-  // Add folders
-  for (const folder of droppedFolders) {
-    if (!imageStore.imageFolders.includes(folder)) {
-      imageStore.setImageFolders([...imageStore.imageFolders, folder])
-    }
-    imageStore.setFolderPath(folder)
+  // Open the first dropped folder
+  if (droppedFolders.length) {
+    imageStore.setFolderPath(droppedFolders[0])
   }
 
   // Add image files directly to compare list
@@ -140,37 +134,8 @@ const onFolderSelect = (data) => {
   imageStore.setFolderPath(data.path)
 }
 
-const onFolderClose = (data) => {
-  const folder = data.path
-  const tmp = imageStore.imageFolders.filter((f) => f !== folder)
-  imageStore.setImageFolders(tmp)
-  const toRemove = imageStore.imageList.filter((item) => item.startsWith(folder))
-  imageStore.removeImages(toRemove)
-  if (imageStore.currentPath === folder || imageStore.currentPath.startsWith(folder + '/')) {
-    imageStore.setFolderPath('')
-  }
-}
-
 const onExpandChange = (keys) => {
   imageStore.expandData = keys
-}
-
-const addFolder = async () => {
-  const { canceled, filePaths } = await window.megspotAPI.showOpenDialog({
-    title: 'add folder',
-    properties: ['openDirectory']
-  })
-  if (canceled || !filePaths?.length) {
-    ElMessage.info('Cancelled to add folder')
-    return
-  }
-  const folder = filePaths[0]
-  if (imageStore.imageFolders.includes(folder)) {
-    ElMessage.info('The folder has been added.')
-  } else {
-    imageStore.setImageFolders([...imageStore.imageFolders, folder])
-    ElMessage.success('Successed to add folder')
-  }
 }
 </script>
 

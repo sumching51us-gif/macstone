@@ -1,13 +1,10 @@
 <template>
   <div class="file-tree">
     <div class="tree-header">
-      <el-button type="primary" size="small" :icon="Plus" @click="onAddFolder">
-        {{ $t('image.toolbar.addFolder') || 'Add Folder' }}
-      </el-button>
       <el-input
         v-model="searchValue"
         size="small"
-        :placeholder="$t('general.filterFileName') || 'Filter'"
+        :placeholder="$t('general.filterFileName') || 'Filter folders'"
         clearable
         class="search-input"
       />
@@ -31,48 +28,33 @@
         @node-collapse="handleNodeCollapse"
       >
         <template #default="{ node, data }">
-          <span
-            class="tree-node"
-            @mouseenter="data.hovering = true"
-            @mouseleave="data.hovering = false"
-          >
+          <span class="tree-node">
             <span class="node-label">
               <el-icon v-if="!data.isLeaf && node.expanded"><FolderOpened /></el-icon>
               <el-icon v-else-if="!data.isLeaf"><Folder /></el-icon>
               <el-icon v-else><Document /></el-icon>
               <span class="label-text" :title="data.path">{{ data.label }}</span>
             </span>
-            <span v-if="node.level === 1 && data.hovering" class="node-actions">
-              <el-icon class="action-btn" @click.stop="onRefresh(node, data)"><RefreshRight /></el-icon>
-              <el-icon class="action-btn close-btn" @click.stop="onClose(node, data)"><Close /></el-icon>
-            </span>
           </span>
         </template>
       </el-tree>
-      <div v-if="!treeData.length" class="empty-tip">
-        {{ $t('image.toolbar.addFolderTip') || 'Click Add Folder to start' }}
-      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue'
-import { Plus, Folder, FolderOpened, Document, RefreshRight, Close } from '@element-plus/icons-vue'
+import { ref, watch, nextTick, onMounted } from 'vue'
+import { Folder, FolderOpened, Document } from '@element-plus/icons-vue'
 import { listDir, generateFileInfo } from './lib'
 
 const props = defineProps({
-  openedFolders: {
-    type: Array,
-    default: () => []
-  },
   currentPath: {
     type: String,
     default: ''
   }
 })
 
-const emit = defineEmits(['select', 'close', 'addFolder', 'expandChange'])
+const emit = defineEmits(['select', 'expandChange'])
 
 const treeRef = ref(null)
 const treeData = ref([])
@@ -86,9 +68,18 @@ const defaultProps = {
   isLeaf: 'isLeaf'
 }
 
-watch(() => props.openedFolders, async (newVal) => {
-  treeData.value = await loadMultiDir(newVal)
-}, { immediate: true })
+onMounted(async () => {
+  try {
+    const homePath = await window.megspotAPI.getPath('home')
+    if (homePath) {
+      const root = generateFileInfo(homePath)
+      root.label = 'Home'
+      treeData.value = [root]
+    }
+  } catch (e) {
+    console.error('Failed to get home path:', e)
+  }
+})
 
 watch(() => props.currentPath, (val) => {
   currentNodeKey.value = val
@@ -123,20 +114,6 @@ async function loadNode(node, resolve) {
   }
 }
 
-async function loadMultiDir(dirs) {
-  const result = []
-  for (const dir of dirs) {
-    try {
-      const res = await listDir(dir, { onlyDir: true })
-      delete res.children
-      result.push(res)
-    } catch (e) {
-      console.error('Failed to load dir:', dir, e)
-    }
-  }
-  return result
-}
-
 function handleNodeClick(data, node) {
   emit('select', data)
 }
@@ -151,21 +128,6 @@ function handleNodeExpand(data) {
 function handleNodeCollapse(data) {
   expandedKeys.value = expandedKeys.value.filter((k) => k !== data.path && !k.startsWith(data.path + '/'))
   emit('expandChange', expandedKeys.value)
-}
-
-function onRefresh(node, data) {
-  if (treeRef.value) {
-    node.loaded = false
-    node.expand()
-  }
-}
-
-function onClose(node, data) {
-  emit('close', data)
-}
-
-function onAddFolder() {
-  emit('addFolder')
 }
 
 function filterNode(value, data) {
@@ -184,9 +146,6 @@ function filterNode(value, data) {
   .tree-header {
     padding: 8px 10px;
     border-bottom: 1px solid #eee;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
 
     .search-input {
       width: 100%;
@@ -231,37 +190,7 @@ function filterNode(value, data) {
           white-space: nowrap;
         }
       }
-
-      .node-actions {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        flex-shrink: 0;
-
-        .action-btn {
-          padding: 2px;
-          cursor: pointer;
-          border-radius: 2px;
-          color: #606266;
-
-          &:hover {
-            background: #e4e7ed;
-            color: #409eff;
-          }
-        }
-
-        .close-btn:hover {
-          color: #f56c6c;
-        }
-      }
     }
-  }
-
-  .empty-tip {
-    color: #909399;
-    text-align: center;
-    padding: 30px 10px;
-    font-size: 12px;
   }
 }
 </style>
