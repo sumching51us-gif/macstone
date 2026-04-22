@@ -451,8 +451,9 @@ function setupAutoUpdater() {
     win?.webContents.send('updater:downloaded', info)
   })
 
-  autoUpdater.on('error', (_err) => {
-    // Silently fail — don't interrupt the user
+  autoUpdater.on('error', (err) => {
+    console.error('[Updater] error:', err)
+    win?.webContents.send('updater:error', { message: err.message, stack: err.stack })
   })
 }
 

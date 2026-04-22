@@ -25,6 +25,9 @@
       <div v-if="!updateState.done" class="update-meta">
         {{ updateState.transferred }} / {{ updateState.total }} — {{ updateState.speed }}
       </div>
+      <div v-if="updateState.error" class="update-error">
+        {{ updateState.error }}
+      </div>
     </div>
   </Transition>
 </template>
@@ -40,6 +43,7 @@ const updateState = reactive({
   total: '',
   speed: '',
   done: false,
+  error: '',
 })
 
 let unlistenUpdate = null
@@ -87,6 +91,11 @@ onMounted(() => {
     updateState.title = '更新已下载完成'
     updateState.percent = 100
     updateState.done = true
+  })
+
+  window.megspotAPI?.on('updater:error', (err) => {
+    console.error('[Updater] renderer error:', err)
+    updateState.error = err.message || String(err)
   })
 })
 
@@ -153,6 +162,12 @@ onUnmounted(() => {
   font-size: 11px;
   color: #aaa;
   text-align: right;
+}
+.update-error {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #f56c6c;
+  word-break: break-all;
 }
 
 .slide-fade-enter-active,
