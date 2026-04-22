@@ -6,9 +6,14 @@
     <div v-if="updateState.visible" class="update-panel">
       <div class="update-header">
         <span class="update-title">{{ updateState.title }}</span>
-        <button v-if="updateState.done" class="update-btn" @click="installUpdate">
-          重启安装
-        </button>
+        <div v-if="updateState.done" class="update-actions">
+          <button class="update-btn" @click="installUpdate">
+            重启安装
+          </button>
+          <button class="update-btn secondary" @click="openReleasePage">
+            手动下载
+          </button>
+        </div>
       </div>
       <el-progress
         v-if="!updateState.done"
