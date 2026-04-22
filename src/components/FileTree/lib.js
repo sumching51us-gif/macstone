@@ -1,4 +1,4 @@
-import { readDir, isDirectory, isFile, getExtname } from '@/utils/file'
+import { readDir, getFileStat, getExtname } from '@/utils/file'
 import path from 'path-browserify'
 
 export const TYPE_DIRECTORY = 0
@@ -24,7 +24,8 @@ export const generateFileInfo = (dirPath, isLeaf = false) => {
 }
 
 export const listDir = async (dirPath, options = {}) => {
-  if (!isDirectory(dirPath)) {
+  const dirStat = await getFileStat(dirPath).catch(() => null)
+  if (!dirStat?.isDirectory) {
     throw new Error(`Invalid directory: ${dirPath}`)
   }
 
@@ -46,13 +47,27 @@ export const listDir = async (dirPath, options = {}) => {
     files = files.filter((item) => !item.startsWith('.'))
   }
 
-  for (const filename of files) {
-    const filePath = path.resolve(dirPath, filename)
-    if (isDirectory(filePath)) {
+  // Batch async stat to avoid blocking renderer with sync IPC calls
+  const stats = await Promise.all(
+    files.map(async (filename) => {
+      const filePath = path.resolve(dirPath, filename)
+      try {
+        const stat = await getFileStat(filePath)
+        return { filename, filePath, stat }
+      } catch {
+        return null
+      }
+    })
+  )
+
+  for (const item of stats) {
+    if (!item) continue
+    const { filename, filePath, stat } = item
+    if (stat.isDirectory) {
       if (!folderBlackList.includes(filename)) {
         dirData.children.push(filePath)
       }
-    } else if (!onlyDir && isFile(filePath)) {
+    } else if (!onlyDir && stat.isFile) {
       if (include && !include.includes(getExtname(filePath))) continue
       dirData.children.push({
         id: getId(),

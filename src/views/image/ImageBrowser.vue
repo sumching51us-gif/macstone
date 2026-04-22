@@ -3,7 +3,23 @@
     <div v-if="currentPath" class="browser-header">
       <div class="path-info">
         <el-icon><Folder /></el-icon>
-        <span class="path-text" :title="currentPath">{{ currentPath }}</span>
+        <el-input
+          v-if="editingPath"
+          ref="pathInputRef"
+          v-model="pathInput"
+          class="path-input"
+          size="small"
+          placeholder="Enter folder path..."
+          @keyup.enter="confirmPath"
+          @keyup.esc="cancelPath"
+          @blur="cancelPath"
+        />
+        <span
+          v-else
+          class="path-text"
+          :title="currentPath"
+          @click="startEditPath"
+        >{{ currentPath }}</span>
         <span class="count">{{ files.length }} images</span>
       </div>
       <div class="actions">
@@ -140,6 +156,7 @@
 <script setup>
 import { ref, watch, computed, nextTick, onMounted, onActivated, onDeactivated, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { Folder, Loading, Check, Grid, List, Picture } from '@element-plus/icons-vue'
 import { readDir, isFile, getExtname, joinPath, formatFileSize, getFileStat } from '@/utils/file'
 import { getImageUrlSyncNoCache } from '@/utils/image'
@@ -152,6 +169,8 @@ const props = defineProps({
   }
 })
 
+const emit = defineEmits(['path-change'])
+
 const router = useRouter()
 const imageStore = useImageStore()
 
@@ -163,6 +182,10 @@ const thumbUrls = ref({})
 const visibleSet = ref(new Set())
 const inflightThumbs = ref(new Set())
 const observer = ref(null)
+
+const editingPath = ref(false)
+const pathInput = ref('')
+const pathInputRef = ref(null)
 
 const selectedSet = computed(() => new Set(selectedFiles.value))
 
@@ -383,6 +406,40 @@ function onSingle() {
   router.push('/image/single')
 }
 
+function startEditPath() {
+  pathInput.value = props.currentPath
+  editingPath.value = true
+  nextTick(() => {
+    pathInputRef.value?.input?.select()
+  })
+}
+
+async function confirmPath() {
+  const raw = pathInput.value.trim()
+  if (!raw || raw === props.currentPath) {
+    cancelPath()
+    return
+  }
+  try {
+    const stat = await window.megspotAPI.fs.stat(raw)
+    if (!stat?.isDirectory) {
+      ElMessage.warning('Path is not a directory')
+      cancelPath()
+      return
+    }
+    editingPath.value = false
+    emit('path-change', raw)
+  } catch {
+    ElMessage.error('Path does not exist')
+    cancelPath()
+  }
+}
+
+function cancelPath() {
+  editingPath.value = false
+  pathInput.value = props.currentPath
+}
+
 function handleKeydown(e) {
   if (e.key === 'Enter') {
     e.preventDefault()
@@ -423,6 +480,24 @@ function handleKeydown(e) {
         white-space: nowrap;
         font-size: 13px;
         color: #606266;
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 4px;
+        transition: background 0.15s;
+
+        &:hover {
+          background: #f0f2f5;
+          color: #409eff;
+        }
+      }
+
+      .path-input {
+        flex: 1;
+        min-width: 0;
+
+        :deep(.el-input__wrapper) {
+          padding: 0 6px;
+        }
       }
 
       .count {

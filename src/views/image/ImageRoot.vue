@@ -36,7 +36,10 @@
           <el-icon><HomeFilled /></el-icon> Home
         </el-button>
       </div>
-      <ImageBrowser :currentPath="imageStore.currentPath" />
+      <ImageBrowser
+        :currentPath="imageStore.currentPath"
+        @path-change="onPathChange"
+      />
     </div>
   </div>
 </template>
@@ -134,6 +137,10 @@ const onFolderSelect = (data) => {
   imageStore.setFolderPath(data.path)
 }
 
+const onPathChange = (path) => {
+  imageStore.setFolderPath(path)
+}
+
 const onExpandChange = (keys) => {
   imageStore.expandData = keys
 }
@@ -149,15 +156,16 @@ const onExpandChange = (keys) => {
   .sidebar {
     position: relative;
     width: 280px;
-    min-width: 280px;
+    flex-shrink: 0;
     border-right: 1px solid #e4e7ed;
     background: #fff;
-    transition: width 0.25s ease, min-width 0.25s ease;
+    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: width;
     display: flex;
+    overflow: hidden;
 
     &.collapsed {
       width: 24px;
-      min-width: 24px;
       border-right: 1px solid #e4e7ed;
 
       .sidebar-toggle {
