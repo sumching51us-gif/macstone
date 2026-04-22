@@ -461,7 +461,19 @@ ipcMain.on('checkForUpdate', () => {
 })
 
 ipcMain.on('updateNow', () => {
-  autoUpdater.quitAndInstall()
+  console.log('[Updater] updateNow called')
+  try {
+    autoUpdater.quitAndInstall()
+    console.log('[Updater] quitAndInstall returned')
+  } catch (e) {
+    console.error('[Updater] quitAndInstall error:', e)
+  }
+  // Fallback: force exit after 1.5s if quitAndInstall didn't work
+  // (common for unsigned macOS apps)
+  setTimeout(() => {
+    console.log('[Updater] Force exiting application')
+    app.exit(0)
+  }, 1500)
 })
 
 ipcMain.handle('screenshot:save', async (_event, dataURL: string) => {
