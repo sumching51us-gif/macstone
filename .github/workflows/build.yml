@@ -6,7 +6,6 @@ on:
       - v*
   workflow_dispatch:
 
-
 jobs:
   release:
     runs-on: macos-latest
@@ -28,13 +27,16 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Debug git tags
-        run: |
-          git describe --tags
-          git log --oneline -3
-          echo "GITHUB_REF=$GITHUB_REF"
-
-      - name: Build/release Electron app
+      - name: Build Electron app
         run: npm run build
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release to GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/*.dmg
+            build/latest-mac.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
