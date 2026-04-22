@@ -6,9 +6,14 @@
     <div v-if="updateState.visible" class="update-panel">
       <div class="update-header">
         <span class="update-title">{{ updateState.title }}</span>
-        <button v-if="updateState.done" class="update-btn" @click="installUpdate">
-          重启安装
-        </button>
+        <div v-if="updateState.done" class="update-actions">
+          <button class="update-btn secondary" @click="openReleasePage">
+            手动下载
+          </button>
+          <button class="update-btn" @click="installUpdate">
+            重启安装
+          </button>
+        </div>
       </div>
       <el-progress
         v-if="!updateState.done"
@@ -51,6 +56,10 @@ function formatBytes(bytes) {
 
 function installUpdate() {
   window.megspotAPI?.send('updateNow')
+}
+
+function openReleasePage() {
+  window.megspotAPI?.openExternal('https://github.com/sumching51us-gif/macstone/releases/latest')
 }
 
 onMounted(() => {
@@ -113,6 +122,10 @@ onUnmounted(() => {
   font-weight: 600;
   font-size: 14px;
 }
+.update-actions {
+  display: flex;
+  gap: 6px;
+}
 .update-btn {
   padding: 4px 12px;
   background: #409eff;
@@ -125,6 +138,15 @@ onUnmounted(() => {
 }
 .update-btn:hover {
   background: #66b1ff;
+}
+.update-btn.secondary {
+  background: transparent;
+  border: 1px solid #666;
+  color: #ccc;
+}
+.update-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 .update-meta {
   margin-top: 6px;
