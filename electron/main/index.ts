@@ -172,7 +172,9 @@ function createMainWindow() {
     }
   })
 
-  win.webContents.openDevTools()
+  if (VITE_DEV_SERVER_URL) {
+    win.webContents.openDevTools()
+  }
 
   win.on('closed', () => {
     win = null
