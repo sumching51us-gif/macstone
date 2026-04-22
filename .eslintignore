@@ -1,7 +1,0 @@
-test/unit/coverage/**
-test/unit/*.js
-test/e2e/*.js
-build/*.js
-src/renderer/assets/**
-dist/**
-src/index.ejs
