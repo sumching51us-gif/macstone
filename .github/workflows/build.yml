@@ -28,6 +28,12 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Debug git tags
+        run: |
+          git describe --tags
+          git log --oneline -3
+          echo "GITHUB_REF=$GITHUB_REF"
+
       - name: Build/release Electron app
         run: npm run build
         env:
