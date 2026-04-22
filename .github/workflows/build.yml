@@ -9,11 +9,9 @@ on:
 
 jobs:
   release:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [macos-latest]
+    runs-on: macos-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Check out Git repository
