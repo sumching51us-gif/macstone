@@ -32,12 +32,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Patch blockmap into latest-mac.yml
+        run: node scripts/patch-blockmap.js
+
       - name: Release to GitHub
         uses: softprops/action-gh-release@v2
         with:
           files: |
             build/*.dmg
             build/*.zip
+            build/*.blockmap
             build/latest-mac.yml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
