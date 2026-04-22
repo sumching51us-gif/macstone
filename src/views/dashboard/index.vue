@@ -19,7 +19,7 @@
       </div>
     </div>
     <div class="footer">
-      <p>AnyStone v3.0.0 · Vue 3 + Vite + Electron 30</p>
+      <p>AnyStone v{{ appVersion }} · Vue 3 + Vite + Electron 30</p>
     </div>
   </div>
 </template>
@@ -27,8 +27,10 @@
 <script setup>
 import { Picture, VideoCamera } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
+import pkg from '../../../package.json'
 
 const router = useRouter()
+const appVersion = pkg.version
 
 const tools = [
   {
