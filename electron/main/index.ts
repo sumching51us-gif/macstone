@@ -462,18 +462,22 @@ ipcMain.on('checkForUpdate', () => {
 
 ipcMain.on('updateNow', () => {
   console.log('[Updater] updateNow called')
+  if (process.platform === 'darwin') {
+    const shipItLog = path.join(os.homedir(), 'Library/Caches/anystone.ShipIt/ShipIt_stderr.log')
+    console.log('[Updater] ShipIt log:', shipItLog)
+  }
   try {
-    autoUpdater.quitAndInstall()
-    console.log('[Updater] quitAndInstall returned')
+    // isSilent=true, forceRunAfter=true — required for unsigned macOS apps
+    autoUpdater.quitAndInstall(true, true)
+    console.log('[Updater] quitAndInstall(true, true) returned')
   } catch (e) {
     console.error('[Updater] quitAndInstall error:', e)
   }
-  // Fallback: force exit after 1.5s if quitAndInstall didn't work
-  // (common for unsigned macOS apps)
+  // Fallback: force exit after 3s if quitAndInstall didn't trigger restart
   setTimeout(() => {
     console.log('[Updater] Force exiting application')
     app.exit(0)
-  }, 1500)
+  }, 3000)
 })
 
 ipcMain.handle('screenshot:save', async (_event, dataURL: string) => {
