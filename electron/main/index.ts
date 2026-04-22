@@ -32,7 +32,6 @@ if (!app.requestSingleInstanceLock()) {
 let win: BrowserWindow | null = null
 let loadWin: BrowserWindow | null = null
 let folderWatcher: any = null
-let isUpdating = false
 const preload = path.join(__dirname, '../preload/index.js')
 const indexHtml = path.join(RENDERER_DIST, 'index.html')
 const iconPath = path.join(process.env.VITE_PUBLIC, 'logo.svg')
@@ -242,9 +241,7 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   win = null
-  if (!isUpdating) {
-    app.quit()
-  }
+  app.quit()
 })
 
 app.on('second-instance', () => {
@@ -464,8 +461,7 @@ ipcMain.on('checkForUpdate', () => {
 })
 
 ipcMain.on('updateNow', () => {
-  isUpdating = true
-  autoUpdater.quitAndInstall(true, true)
+  autoUpdater.quitAndInstall()
 })
 
 ipcMain.handle('screenshot:save', async (_event, dataURL: string) => {
