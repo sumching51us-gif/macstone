@@ -69,16 +69,30 @@ const defaultProps = {
 }
 
 onMounted(async () => {
+  const roots = []
   try {
     const homePath = await window.megspotAPI.getPath('home')
     if (homePath) {
       const root = generateFileInfo(homePath)
       root.label = 'Home'
-      treeData.value = [root]
+      roots.push(root)
     }
   } catch (e) {
     console.error('Failed to get home path:', e)
   }
+
+  try {
+    const volumes = await window.megspotAPI.fs.readDir('/Volumes')
+    for (const name of volumes) {
+      if (name.startsWith('.')) continue
+      const volPath = '/Volumes/' + name
+      roots.push(generateFileInfo(volPath))
+    }
+  } catch (e) {
+    console.error('Failed to list volumes:', e)
+  }
+
+  treeData.value = roots
 })
 
 watch(() => props.currentPath, (val) => {
