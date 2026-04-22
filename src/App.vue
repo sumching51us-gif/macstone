@@ -1,45 +1,145 @@
 <template>
   <router-view />
+
+  <!-- Auto-update progress panel -->
+  <Transition name="slide-fade">
+    <div v-if="updateState.visible" class="update-panel">
+      <div class="update-header">
+        <span class="update-title">{{ updateState.title }}</span>
+        <button v-if="updateState.done" class="update-btn" @click="installUpdate">
+          重启安装
+        </button>
+      </div>
+      <el-progress
+        v-if="!updateState.done"
+        :percentage="updateState.percent"
+        :show-text="true"
+        :stroke-width="6"
+        status="success"
+      />
+      <div v-if="!updateState.done" class="update-meta">
+        {{ updateState.transferred }} / {{ updateState.total }} — {{ updateState.speed }}
+      </div>
+    </div>
+  </Transition>
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
-import { ElNotification } from 'element-plus'
+import { onMounted, onUnmounted, reactive } from 'vue'
+
+const updateState = reactive({
+  visible: false,
+  title: '发现新版本',
+  percent: 0,
+  transferred: '',
+  total: '',
+  speed: '',
+  done: false,
+})
 
 let unlistenUpdate = null
+let unlistenProgress = null
 let unlistenDownloaded = null
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+
+function installUpdate() {
+  window.megspotAPI?.send('updateNow')
+}
 
 onMounted(() => {
   try {
     window.megspotAPI?.send('renderer-ready', 'App mounted')
   } catch (e) {}
 
-  // Listen for auto-updater events from main process
   unlistenUpdate = window.megspotAPI?.on('updater:available', (info) => {
-    ElNotification({
-      title: '发现新版本',
-      message: `AnyStone ${info.version} 正在后台下载...`,
-      type: 'info',
-      duration: 5000,
-    })
+    updateState.visible = true
+    updateState.title = `发现新版本 AnyStone ${info.version}`
+    updateState.percent = 0
+    updateState.done = false
   })
 
-  unlistenDownloaded = window.megspotAPI?.on('updater:downloaded', (info) => {
-    ElNotification({
-      title: '更新已就绪',
-      message: `AnyStone ${info.version} 已下载完成，重启应用即可安装。`,
-      type: 'success',
-      duration: 0,
-      showClose: true,
-      onClose: () => {
-        window.megspotAPI?.send('updateNow')
-      },
-    })
+  unlistenProgress = window.megspotAPI?.on('updater:progress', (info) => {
+    updateState.visible = true
+    updateState.percent = Math.round(info.percent || 0)
+    updateState.transferred = formatBytes(info.transferred || 0)
+    updateState.total = formatBytes(info.total || 0)
+    updateState.speed = formatBytes(info.bytesPerSecond || 0) + '/s'
+  })
+
+  unlistenDownloaded = window.megspotAPI?.on('updater:downloaded', () => {
+    updateState.visible = true
+    updateState.title = '更新已下载完成'
+    updateState.percent = 100
+    updateState.done = true
   })
 })
 
 onUnmounted(() => {
   unlistenUpdate?.()
+  unlistenProgress?.()
   unlistenDownloaded?.()
 })
 </script>
+
+<style scoped>
+.update-panel {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 280px;
+  padding: 14px 16px;
+  background: rgba(30, 30, 30, 0.92);
+  backdrop-filter: blur(12px);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  z-index: 9999;
+  color: #fff;
+  font-size: 13px;
+}
+.update-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.update-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+.update-btn {
+  padding: 4px 12px;
+  background: #409eff;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.update-btn:hover {
+  background: #66b1ff;
+}
+.update-meta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #aaa;
+  text-align: right;
+}
+
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+</style>

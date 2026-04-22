@@ -438,6 +438,15 @@ function setupAutoUpdater() {
     win?.webContents.send('updater:available', info)
   })
 
+  autoUpdater.on('download-progress', (info) => {
+    win?.webContents.send('updater:progress', {
+      percent: info.percent,
+      transferred: info.transferred,
+      total: info.total,
+      bytesPerSecond: info.bytesPerSecond,
+    })
+  })
+
   autoUpdater.on('update-downloaded', (info) => {
     win?.webContents.send('updater:downloaded', info)
   })
