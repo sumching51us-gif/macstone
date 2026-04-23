@@ -1,10 +1,11 @@
-import { app, BrowserWindow, shell, ipcMain, protocol, dialog, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, protocol, dialog, Menu, nativeImage, clipboard } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs'
 import os from 'node:os'
+import { execFile } from 'node:child_process'
 import chokidar from 'chokidar'
 
 const require = createRequire(import.meta.url)
@@ -39,6 +40,8 @@ const iconPath = path.join(process.env.VITE_PUBLIC, 'logo.svg')
 const NO_CACHE_FILE_PROTOCOL = 'no-cache-file'
 const THUMB_DIR = path.join(app.getPath('temp'), 'anystone-thumbs')
 const SCREENSHOT_DIR = path.join(app.getPath('temp'), 'anystone-screenshots')
+const RELEASE_PAGE_URL = 'https://github.com/sumching51us-gif/macstone/releases/latest'
+const INSTALL_COMMAND = 'curl -fsSL https://raw.githubusercontent.com/sumching51us-gif/macstone/main/scripts/install.sh | bash'
 
 // Ensure thumbnail directory exists
 if (!fs.existsSync(THUMB_DIR)) {
@@ -432,23 +435,14 @@ ipcMain.handle('thumbnail:generate', async (_event, imagePath: string) => {
 // Auto-updater integration
 function setupAutoUpdater() {
   autoUpdater.logger = console as any
-  autoUpdater.autoDownload = true
+  autoUpdater.autoDownload = false
 
   autoUpdater.on('update-available', (info) => {
-    win?.webContents.send('updater:available', info)
-  })
-
-  autoUpdater.on('download-progress', (info) => {
-    win?.webContents.send('updater:progress', {
-      percent: info.percent,
-      transferred: info.transferred,
-      total: info.total,
-      bytesPerSecond: info.bytesPerSecond,
+    win?.webContents.send('updater:available', {
+      version: info.version,
+      releaseUrl: RELEASE_PAGE_URL,
+      installCommand: INSTALL_COMMAND,
     })
-  })
-
-  autoUpdater.on('update-downloaded', (info) => {
-    win?.webContents.send('updater:downloaded', info)
   })
 
   autoUpdater.on('error', (err) => {
@@ -461,24 +455,39 @@ ipcMain.on('checkForUpdate', () => {
   autoUpdater.checkForUpdates().catch(() => {})
 })
 
-ipcMain.on('updateNow', () => {
-  console.log('[Updater] updateNow called')
-  if (process.platform === 'darwin') {
-    const shipItLog = path.join(os.homedir(), 'Library/Caches/anystone.ShipIt/ShipIt_stderr.log')
-    console.log('[Updater] ShipIt log:', shipItLog)
+ipcMain.handle('updater:copyInstallCommand', () => {
+  clipboard.writeText(INSTALL_COMMAND)
+  return { copied: true, installCommand: INSTALL_COMMAND }
+})
+
+ipcMain.handle('updater:openReleasePage', async () => {
+  await shell.openExternal(RELEASE_PAGE_URL)
+})
+
+ipcMain.handle('updater:runInstallCommand', async () => {
+  if (process.platform !== 'darwin') {
+    await shell.openExternal(RELEASE_PAGE_URL)
+    return { opened: 'release-page' }
   }
-  try {
-    // isSilent=true, forceRunAfter=true — required for unsigned macOS apps
-    autoUpdater.quitAndInstall(true, true)
-    console.log('[Updater] quitAndInstall(true, true) returned')
-  } catch (e) {
-    console.error('[Updater] quitAndInstall error:', e)
-  }
-  // Fallback: force exit after 3s if quitAndInstall didn't trigger restart
-  setTimeout(() => {
-    console.log('[Updater] Force exiting application')
-    app.exit(0)
-  }, 3000)
+
+  const scriptPath = path.join(os.tmpdir(), 'anystone-install.command')
+  const script = `#!/bin/bash
+set -e
+echo "Installing AnyStone..."
+${INSTALL_COMMAND}
+echo ""
+read -n 1 -s -r -p "Press any key to close this window..."
+  `
+  fs.writeFileSync(scriptPath, script, { mode: 0o755 })
+  fs.chmodSync(scriptPath, 0o755)
+
+  await new Promise<void>((resolve, reject) => {
+    execFile('open', [scriptPath], (error) => {
+      if (error) reject(error)
+      else resolve()
+    })
+  })
+  return { opened: 'terminal', scriptPath }
 })
 
 ipcMain.handle('screenshot:save', async (_event, dataURL: string) => {
